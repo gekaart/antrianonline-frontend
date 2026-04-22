@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* ── Custom animations (Tailwind v4: defined in CSS, not tailwind.config.ts) ── */
+@theme {
+  --animate-marquee: marquee 25s linear infinite;
+}
+
+@keyframes marquee {
+  from { transform: translateX(100vw); }
+  to   { transform: translateX(-100%); }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}

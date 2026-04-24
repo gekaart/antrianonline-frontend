@@ -83,6 +83,10 @@ function getYoutubePanelWidth(count: number): string {
 export default function MonitorPage() {
   const params = useParams<{ alias: string; slug: string }>();
   const { alias, slug } = params;
+  // Read token from URL query string (client-side only; not rendered in JSX so no hydration mismatch)
+  const monitorToken = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search).get('token') ?? '')
+    : '';
   const [data, setData] = useState<MonitorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [calledQueue, setCalledQueue] = useState<{ nomor: string; meja: number } | null>(null);
@@ -91,14 +95,15 @@ export default function MonitorPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const d = await api.get<MonitorData>(`/api/public/monitor/${alias}/${slug}`);
+      const tokenParam = monitorToken ? `?token=${encodeURIComponent(monitorToken)}` : '';
+      const d = await api.get<MonitorData>(`/api/public/monitor/${alias}/${slug}${tokenParam}`);
       setData(d);
     } catch {
       // silent on poll
     } finally {
       setLoading(false);
     }
-  }, [alias, slug]);
+  }, [alias, slug, monitorToken]);
 
   useEffect(() => {
     fetchData();
@@ -110,7 +115,7 @@ export default function MonitorPage() {
 
   const [audioLog, setAudioLog] = useState<string[]>([]);
   const [showLog, setShowLog] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const audioUnlockedRef = useRef(false);
   const [resetNotif, setResetNotif] = useState<string | null>(null);
   const resetNotifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -451,6 +456,28 @@ export default function MonitorPage() {
               <div className="text-sm text-gray-400 mt-0.5">
                 {time.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
               </div>
+              <div className="mt-2 flex items-center justify-end gap-2">
+                <button
+                  onClick={toggleAudio}
+                  title={audioEnabled ? "Matikan Suara" : "Aktifkan Suara"}
+                  className={`p-1.5 rounded-md transition-colors text-sm ${
+                    audioEnabled
+                      ? "text-green-400 bg-green-900/20 hover:bg-green-900/40"
+                      : "text-gray-500 bg-gray-800 hover:text-gray-300"
+                  }`}
+                >
+                  {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                </button>
+                <button
+                  onClick={() => { setShowLog((v) => !v); addLog("Log panel toggled"); }}
+                  title="Toggle Debug Log"
+                  className={`p-1.5 rounded-md transition-colors text-sm ${
+                    showLog ? "text-yellow-400 bg-yellow-900/20" : "text-gray-500 bg-gray-800 hover:text-gray-300"
+                  }`}
+                >
+                  <Terminal className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -594,31 +621,9 @@ export default function MonitorPage() {
         </div>
       )}
 
-      {/* Bottom control bar — audio & debug icons only */}
-      <div className="bg-gray-900 border-t border-gray-800 px-6 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleAudio}
-            title={audioEnabled ? "Matikan Suara" : "Aktifkan Suara"}
-            className={`p-2.5 rounded-xl transition-colors ${
-              audioEnabled
-                ? "text-green-400 bg-green-900/30 hover:bg-green-900/60"
-                : "text-gray-600 bg-gray-800 hover:text-gray-400"
-            }`}
-          >
-            {audioEnabled ? <Volume2 className="h-6 w-6" /> : <VolumeX className="h-6 w-6" />}
-          </button>
-          <button
-            onClick={() => { setShowLog((v) => !v); addLog("Log panel toggled"); }}
-            title="Toggle Debug Log"
-            className={`p-2.5 rounded-xl transition-colors ${
-              showLog ? "text-yellow-400 bg-yellow-900/30" : "text-gray-600 bg-gray-800 hover:text-gray-400"
-            }`}
-          >
-            <Terminal className="h-5 w-5" />
-          </button>
-        </div>
-        <p className="text-gray-700 text-xs">AntriOnline Monitor</p>
+      {/* Bottom control bar (label only) */}
+      <div className="bg-gray-900 border-t border-gray-800 px-6 py-2">
+        <p className="text-center text-gray-500 text-xs">AntriOnline Monitor</p>
       </div>
     </div>
   );

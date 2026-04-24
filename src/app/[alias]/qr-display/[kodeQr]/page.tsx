@@ -27,7 +27,7 @@ export default function QrDisplayPage() {
 
   const [info, setInfo] = useState<RuanganInfo | null>(null);
   const [todayStr, setTodayStr] = useState(getTodayStr());
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<Date | null>(null);
   const [origin, setOrigin] = useState("");
   const midnightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -51,8 +51,10 @@ export default function QrDisplayPage() {
     fetchInfo(true).catch(() => fetchInfo(false).catch(() => {}));
   }, [kodeQr, todayStr]);
 
-  // Clock — tick every second
+  // Clock — initialize on mount and tick every second (avoid rendering dynamic
+  // time during SSR to prevent hydration mismatch)
   useEffect(() => {
+    setTime(new Date());
     const tick = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(tick);
   }, []);
@@ -72,17 +74,21 @@ export default function QrDisplayPage() {
     };
   }, []);
 
-  const dateLabel = time.toLocaleDateString("id-ID", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const timeLabel = time.toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  const dateLabel = time
+    ? time.toLocaleDateString("id-ID", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "";
+  const timeLabel = time
+    ? time.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : "";
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-8 p-8 select-none">

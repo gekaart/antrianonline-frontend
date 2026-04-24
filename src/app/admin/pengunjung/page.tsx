@@ -287,8 +287,9 @@ export default function PengunjungPage() {
           <p className="text-gray-500 mt-1">Riwayat antrian dan data pengunjung</p>
         </div>
         <Link href="/admin/field-pengunjung">
-          <Button variant="outline" className="gap-2">
-            <FormInput className="h-4 w-4" /> Field Pengunjung
+          <Button variant="outline" className="gap-2" aria-label="Field Pengunjung">
+            <FormInput className="h-4 w-4" />
+            <span className="hidden md:inline">Field Pengunjung</span>
           </Button>
         </Link>
       </div>

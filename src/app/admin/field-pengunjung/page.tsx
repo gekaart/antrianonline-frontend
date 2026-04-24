@@ -169,7 +169,10 @@ export default function FieldPengunjungPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Daftar Field Tambahan</CardTitle>
-            <Button onClick={openCreate} size="sm" className="gap-2"><Plus className="h-4 w-4" /> Tambah Field</Button>
+            <Button onClick={openCreate} size="sm" className="gap-2" aria-label="Tambah Field">
+              <Plus className="h-4 w-4" />
+              <span className="hidden md:inline">Tambah Field</span>
+            </Button>
           </div>
         </CardHeader>
         <CardContent>

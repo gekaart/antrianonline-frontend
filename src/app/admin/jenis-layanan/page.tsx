@@ -62,7 +62,10 @@ export default function JenisLayananPage() {
           <h1 className="text-2xl font-bold text-gray-900">Jenis Layanan</h1>
           <p className="text-gray-500 mt-1">Kelola jenis layanan antrian</p>
         </div>
-        <Button onClick={openCreate} className="gap-2"><Plus className="h-4 w-4" /> Tambah</Button>
+        <Button onClick={openCreate} className="gap-2" aria-label="Tambah Jenis Layanan">
+          <Plus className="h-4 w-4" />
+          <span className="hidden md:inline">Tambah</span>
+        </Button>
       </div>
 
       <Card>

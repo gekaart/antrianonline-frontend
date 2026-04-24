@@ -11,12 +11,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Spinner } from "@/components/ui/spinner";
-import { Plus, Edit2, Trash2, QrCode, Monitor, ExternalLink, Printer, Download } from "lucide-react";
+import { Plus, Edit2, Trash2, QrCode, Monitor, ExternalLink, Printer, Download, Lock, Copy } from "lucide-react";
 
 interface JenisLayanan { id: number; nama: string; kode_huruf: string; }
 interface Ruangan {
   id: number; nama: string; slug: string; kode_qr: string; jumlah_meja: number;
   jenis_layanan: JenisLayanan[];
+  monitor_token?: string | null;
 }
 
 const emptyForm = { nama: "", jumlah_meja: 1, id_jenis_layanan: [] as number[] };
@@ -36,6 +37,11 @@ export default function RuanganPage() {
   const [qrOpen, setQrOpen] = useState(false);
   const [qrRuangan, setQrRuangan] = useState<Ruangan | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
+
+  // Monitor token dialog state
+  const [tokenOpen, setTokenOpen] = useState(false);
+  const [tokenRuangan, setTokenRuangan] = useState<Ruangan | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
 
   async function load() {
     const [r, jl, k] = await Promise.all([
@@ -103,6 +109,41 @@ export default function RuanganPage() {
     setQrOpen(true);
   }
 
+  function openToken(r: Ruangan) {
+    setTokenRuangan(r);
+    setTokenOpen(true);
+  }
+
+  async function generateMonitorToken(r: Ruangan) {
+    setTokenLoading(true);
+    try {
+      const result = await api.post<{ monitor_token: string }>(`/api/admin/ruangan/${r.id}/monitor-token`, {});
+      const updated = { ...r, monitor_token: result.monitor_token };
+      setTokenRuangan(updated);
+      setList((prev) => prev.map((ru) => (ru.id === r.id ? updated : ru)));
+      toast({ title: "Token monitor dihasilkan", variant: "success" });
+    } catch {
+      toast({ title: "Gagal menghasilkan token", variant: "destructive" });
+    } finally {
+      setTokenLoading(false);
+    }
+  }
+
+  async function removeMonitorToken(r: Ruangan) {
+    setTokenLoading(true);
+    try {
+      await api.delete(`/api/admin/ruangan/${r.id}/monitor-token`);
+      const updated = { ...r, monitor_token: null };
+      setTokenRuangan(updated);
+      setList((prev) => prev.map((ru) => (ru.id === r.id ? updated : ru)));
+      toast({ title: "Token dihapus, monitor menjadi publik", variant: "success" });
+    } catch {
+      toast({ title: "Gagal menghapus token", variant: "destructive" });
+    } finally {
+      setTokenLoading(false);
+    }
+  }
+
   function qrUrl(r: Ruangan) {
     const base = `${window.location.origin}/${alias}/queue/${r.kode_qr}`;
     if (qrDinamis) {
@@ -158,8 +199,9 @@ export default function RuanganPage() {
           <h1 className="text-2xl font-bold text-gray-900">Ruangan</h1>
           <p className="text-gray-500 mt-1">Kelola ruangan layanan dan meja</p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> Tambah Ruangan
+        <Button onClick={openCreate} className="gap-2" aria-label="Tambah Ruangan">
+          <Plus className="h-4 w-4" />
+          <span className="hidden md:inline">Tambah Ruangan</span>
         </Button>
       </div>
 
@@ -186,9 +228,9 @@ export default function RuanganPage() {
                 ))}
               </div>
               <p className="text-sm text-gray-500">{r.jumlah_meja} meja</p>
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-2 pt-1 flex-wrap">
                 <a
-                  href={`/${alias}/monitor/${r.slug}`}
+                  href={`/${alias}/monitor/${r.slug}${r.monitor_token ? `?token=${r.monitor_token}` : ''}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
@@ -201,6 +243,13 @@ export default function RuanganPage() {
                   className="flex items-center gap-1 text-xs text-gray-600 hover:underline"
                 >
                   <QrCode className="h-3 w-3" /> QR Code
+                </button>
+                <button
+                  onClick={() => openToken(r)}
+                  className={`flex items-center gap-1 text-xs hover:underline ${r.monitor_token ? 'text-green-600' : 'text-gray-400'}`}
+                >
+                  <Lock className="h-3 w-3" />
+                  {r.monitor_token ? 'Terlindungi' : 'Publik'}
                 </button>
               </div>
             </CardContent>
@@ -297,6 +346,78 @@ export default function RuanganPage() {
                 </Button>
               </a>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Monitor Token Dialog */}
+      <Dialog open={tokenOpen} onOpenChange={setTokenOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Token Monitor — {tokenRuangan?.nama}
+            </DialogTitle>
+            <DialogDescription>
+              Lindungi halaman monitor agar hanya dapat diakses dengan token rahasia.
+              Tanpa token, siapa saja yang tahu URL dapat melihat antrian.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {tokenRuangan?.monitor_token ? (
+              <>
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-xs text-green-700 font-medium mb-1">Monitor dilindungi ✓</p>
+                  <p className="font-mono text-xs break-all text-gray-700">{tokenRuangan.monitor_token}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>URL Monitor (salin dan simpan)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      value={`${typeof window !== 'undefined' ? window.location.origin : ''}/${alias}/monitor/${tokenRuangan.slug}?token=${tokenRuangan.monitor_token}`}
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          `${window.location.origin}/${alias}/monitor/${tokenRuangan!.slug}?token=${tokenRuangan!.monitor_token}`
+                        );
+                        toast({ title: "URL disalin!", variant: "success" });
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  Monitor saat ini <strong>publik</strong> — siapa saja yang tahu URL dapat mengaksesnya.
+                  Klik &quot;Buat Token&quot; untuk mengamankannya.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex gap-2">
+            {tokenRuangan?.monitor_token && (
+              <Button
+                variant="destructive"
+                onClick={() => removeMonitorToken(tokenRuangan)}
+                disabled={tokenLoading}
+              >
+                {tokenLoading ? "Memproses..." : "Hapus Token (Jadikan Publik)"}
+              </Button>
+            )}
+            <Button
+              onClick={() => tokenRuangan && generateMonitorToken(tokenRuangan)}
+              disabled={tokenLoading}
+            >
+              {tokenLoading ? "Membuat..." : tokenRuangan?.monitor_token ? "Buat Ulang Token" : "Buat Token"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

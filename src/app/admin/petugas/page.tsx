@@ -63,10 +63,19 @@ export default function PetugasPage() {
           <p className="text-gray-500 mt-1">Kelola akun petugas counter</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => window.open(user?.k_alias ? `/${user.k_alias}/counter/login` : "/counter/login", "_blank")}>
-            <ExternalLink className="h-4 w-4" /> Buka Halaman Counter
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => window.open(user?.k_alias ? `/${user.k_alias}/counter/login` : "/counter/login", "_blank")}
+            aria-label="Buka Halaman Counter"
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span className="hidden md:inline">Buka Halaman Counter</span>
           </Button>
-          <Button onClick={openCreate} className="gap-2"><Plus className="h-4 w-4" /> Tambah Petugas</Button>
+          <Button onClick={openCreate} className="gap-2" aria-label="Tambah Petugas">
+            <Plus className="h-4 w-4" />
+            <span className="hidden md:inline">Tambah Petugas</span>
+          </Button>
         </div>
       </div>
 

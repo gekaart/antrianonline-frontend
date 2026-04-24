@@ -17,6 +17,16 @@ export function middleware(request: NextRequest) {
   const adminToken = request.cookies.get("auth_token")?.value;
   const counterToken = request.cookies.get("counter_token")?.value;
 
+  // Temporary feature flag: when enabled, redirect root `/` to `/admin/login`.
+  // Set environment variable `FORCE_ROOT_TO_ADMIN=1` (or "true") to enable.
+  const FORCE_ROOT_TO_ADMIN =
+    process.env.FORCE_ROOT_TO_ADMIN === "1" ||
+    process.env.FORCE_ROOT_TO_ADMIN === "true";
+
+  if (FORCE_ROOT_TO_ADMIN && pathname === "/") {
+    return NextResponse.redirect(new URL("/admin/login", request.url));
+  }
+
   // Allow public static paths
   if (publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     return NextResponse.next();

@@ -10,6 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Toaster } from "@/components/ui/toast";
 import { MonitorSpeaker, Lock } from "lucide-react";
 
+interface DebugLog {
+  time: string;
+  type: "info" | "success" | "error";
+  msg: string;
+}
+
 export default function CounterLoginPage() {
   const router = useRouter();
   const { alias } = useParams<{ alias: string }>();
@@ -17,6 +23,13 @@ export default function CounterLoginPage() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [attempts, setAttempts] = useState(0);
+  const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
+
+  function addLog(type: DebugLog["type"], msg: string) {
+    const time = new Date().toISOString().slice(11, 23);
+    setDebugLogs((prev) => [...prev, { time, type, msg }]);
+    console.log(`[DEBUG ${type.toUpperCase()}] ${msg}`);
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -27,16 +40,27 @@ export default function CounterLoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setDebugLogs([]);
+
+    addLog("info", `Alias kantor: "${alias}"`);
+    addLog("info", `Username: "${form.username}"`);
+    addLog("info", `API_BASE: "${process.env.NEXT_PUBLIC_API_URL ?? "(kosong = relative URL)"}"`);
+    addLog("info", `Target URL: ${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/auth/counter-login`);
+
     try {
-      await counterLogin(form.username, form.password, alias);
+      addLog("info", "Mengirim request POST /api/auth/counter-login ...");
+      const result = await counterLogin(form.username, form.password, alias);
+      addLog("success", `Login berhasil. User: ${JSON.stringify(result)}`);
+      addLog("info", `Redirect ke /${alias}/counter/select ...`);
       router.push(`/${alias}/counter/select`);
     } catch (err: unknown) {
-      const error = err as { message?: string; status?: number };
+      const e = err as { message?: string; status?: number; body?: unknown };
       setAttempts((a) => a + 1);
-      if (error?.status === 429) {
+      addLog("error", `ERROR: ${e?.message} | status: ${e?.status ?? "N/A"} | body: ${JSON.stringify(e?.body ?? null)}`);
+      if (e?.status === 429) {
         setError("Terlalu banyak percobaan login. Silakan coba lagi dalam beberapa menit.");
       } else {
-        setError(error?.message || "Username atau password salah");
+        setError(e?.message || "Username atau password salah");
       }
     } finally {
       setLoading(false);
@@ -113,6 +137,36 @@ export default function CounterLoginPage() {
               </form>
             </CardContent>
           </Card>
+
+          {/* DEBUG PANEL */}
+          {debugLogs.length > 0 && (
+            <div className="mt-4 rounded-lg border border-gray-600 bg-gray-950 text-xs text-gray-100 p-3 font-mono">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-yellow-400">🔍 Debug Log</span>
+                <button
+                  onClick={() => setDebugLogs([])}
+                  className="text-gray-500 hover:text-white text-xs"
+                >
+                  [clear]
+                </button>
+              </div>
+              {debugLogs.map((log, i) => (
+                <div
+                  key={i}
+                  className={
+                    log.type === "error"
+                      ? "text-red-400"
+                      : log.type === "success"
+                      ? "text-green-400"
+                      : "text-gray-300"
+                  }
+                >
+                  <span className="text-gray-600">[{log.time}]</span>{" "}
+                  {log.msg}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>

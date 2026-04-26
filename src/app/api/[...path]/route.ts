@@ -1,9 +1,8 @@
 /**
- * Explicit server-side proxy for /api/petugas/* routes.
- * Replaces the Next.js rewrite for petugas routes because the rewrite
- * was returning HTTP 200 with empty body in the Hostinger environment.
- * This route runs server-side and forwards Authorization + Cookie headers
- * to the backend explicitly.
+ * Catch-all server-side proxy for all /api/* routes.
+ * Replaces ALL Next.js rewrites for API paths because Hostinger's environment
+ * strips the response body from GET rewrites (returns HTTP 200 with empty body).
+ * This route runs server-side and proxies directly to BACKEND_URL.
  */
 import { NextRequest, NextResponse } from "next/server";
 
@@ -14,16 +13,15 @@ async function proxy(
   params: { path: string[] }
 ): Promise<NextResponse> {
   const pathStr = params.path.join("/");
-  const backendUrl = `${BACKEND_URL}/api/petugas/${pathStr}`;
+  const search = req.nextUrl.search || "";
+  const backendUrl = `${BACKEND_URL}/api/${pathStr}${search}`;
 
-  // Forward Authorization and Cookie headers
+  // Forward relevant headers
   const forwardHeaders: Record<string, string> = {};
   const auth = req.headers.get("authorization");
   if (auth) forwardHeaders["authorization"] = auth;
   const cookie = req.headers.get("cookie");
   if (cookie) forwardHeaders["cookie"] = cookie;
-
-  // Forward Content-Type for write methods
   const contentType = req.headers.get("content-type");
   if (contentType) forwardHeaders["content-type"] = contentType;
 
@@ -42,16 +40,20 @@ async function proxy(
   } catch (err) {
     const e = err as Error;
     return NextResponse.json(
-      { error: `Proxy error: ${e.message}` },
+      { error: `Proxy error reaching backend: ${e.message}` },
       { status: 502 }
     );
   }
 
   const text = await backendRes.text();
 
+  const resHeaders: Record<string, string> = {};
+  const resContentType = backendRes.headers.get("content-type");
+  resHeaders["content-type"] = resContentType || "application/json";
+
   const res = new NextResponse(text || null, {
     status: backendRes.status,
-    headers: { "content-type": "application/json" },
+    headers: resHeaders,
   });
 
   // Forward Set-Cookie headers from backend to browser
@@ -86,6 +88,13 @@ export async function PUT(
 }
 
 export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  return proxy(req, await params);
+}
+
+export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {

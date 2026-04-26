@@ -1,4 +1,7 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Use relative URL ("") in production so API calls go through Next.js rewrite proxy,
+// which sets cookies on the frontend domain (antrianonline.net) not the backend domain.
+// In local dev, set NEXT_PUBLIC_API_URL=http://localhost:8080 in .env.local.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface FetchOptions extends RequestInit {
   skipAuth?: boolean;

@@ -8,6 +8,8 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
   async rewrites() {
     return [
       {

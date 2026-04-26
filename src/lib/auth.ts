@@ -27,7 +27,19 @@ export async function counterLogin(
     "/api/auth/counter-login",
     { username, password, alias }
   );
+  // Save token to localStorage so apiFetch can send it as Bearer header.
+  // Cookie forwarding via Next.js proxy is unreliable for subsequent requests.
+  if (typeof window !== "undefined" && res.token) {
+    localStorage.setItem("counter_token_bearer", res.token);
+  }
   return res.user;
+}
+
+export async function counterLogout(): Promise<void> {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("counter_token_bearer");
+  }
+  await api.post("/api/auth/counter-logout").catch(() => {});
 }
 
 export async function logout(): Promise<void> {

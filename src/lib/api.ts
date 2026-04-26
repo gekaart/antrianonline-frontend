@@ -20,6 +20,15 @@ export async function apiFetch<T = unknown>(
     ...(fetchOptions.headers as Record<string, string>),
   };
 
+  // For /api/petugas/* routes, add stored counter token as Bearer header.
+  // This bypasses cookie forwarding issues in Next.js proxy.
+  if (typeof window !== "undefined" && !headers["Authorization"]) {
+    if (path.startsWith("/api/petugas")) {
+      const counterToken = localStorage.getItem("counter_token_bearer");
+      if (counterToken) headers["Authorization"] = `Bearer ${counterToken}`;
+    }
+  }
+
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {

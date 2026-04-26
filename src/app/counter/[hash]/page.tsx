@@ -180,6 +180,7 @@ export default function CounterPage() {
     try {
       await api.post("/api/petugas/counter/logout", {});
     } finally {
+      localStorage.removeItem("counter_token_bearer");
       router.push("/counter/login");
     }
   }

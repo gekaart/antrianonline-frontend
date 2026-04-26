@@ -21,6 +21,7 @@ export default function CounterSelectPage() {
   const { alias } = useParams<{ alias: string }>();
   const [ruangan, setRuangan] = useState<Ruangan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sel, setSel] = useState({ id_ruangan: 0, id_jenis_layanan: 0, id_meja: 0 });
 
@@ -30,7 +31,11 @@ export default function CounterSelectPage() {
   useEffect(() => {
     api.get<{ ruangan: Ruangan[] }>("/api/petugas/counter/options")
       .then((d) => setRuangan(d.ruangan))
-      .catch(() => router.push(`/${alias}/counter/login`))
+      .catch((err: unknown) => {
+        const e = err as { message?: string; status?: number };
+        const msg = `Gagal memuat data counter (status: ${e?.status ?? "N/A"}): ${e?.message ?? "unknown error"}`;
+        setLoadError(msg);
+      })
       .finally(() => setLoading(false));
   }, [alias, router]);
 
@@ -72,6 +77,28 @@ export default function CounterSelectPage() {
   if (loading) return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <Spinner size="lg" className="border-t-blue-400" />
+    </div>
+  );
+
+  if (loadError) return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-red-950 border border-red-700 rounded-lg p-5 text-red-300 font-mono text-sm">
+          <p className="font-bold text-red-400 mb-2">⚠ Gagal Memuat Data Counter</p>
+          <p className="break-all">{loadError}</p>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => { setLoadError(""); setLoading(true); api.get<{ ruangan: Ruangan[] }>("/api/petugas/counter/options").then((d) => setRuangan(d.ruangan)).catch((err: unknown) => { const e = err as { message?: string; status?: number }; setLoadError(`Gagal memuat data counter (status: ${e?.status ?? "N/A"}): ${e?.message ?? "unknown error"}`); }).finally(() => setLoading(false)); }}
+              className="bg-blue-700 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs"
+            >
+              Coba Lagi
+            </button>
+            <a href={`/${alias}/counter/login`} className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs">
+              Kembali ke Login
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 

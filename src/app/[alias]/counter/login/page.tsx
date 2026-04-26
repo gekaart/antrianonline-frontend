@@ -23,12 +23,30 @@ export default function CounterLoginPage() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [attempts, setAttempts] = useState(0);
-  const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
+  const [debugLogs, setDebugLogs] = useState<DebugLog[]>(() => {
+    // Restore logs from sessionStorage (survive redirect back to login)
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("counter_debug_logs");
+        if (saved) return JSON.parse(saved) as DebugLog[];
+      } catch { /* ignore */ }
+    }
+    return [];
+  });
 
   function addLog(type: DebugLog["type"], msg: string) {
     const time = new Date().toISOString().slice(11, 23);
-    setDebugLogs((prev) => [...prev, { time, type, msg }]);
+    setDebugLogs((prev) => {
+      const next = [...prev, { time, type, msg }];
+      try { sessionStorage.setItem("counter_debug_logs", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
     console.log(`[DEBUG ${type.toUpperCase()}] ${msg}`);
+  }
+
+  function clearLogs() {
+    setDebugLogs([]);
+    try { sessionStorage.removeItem("counter_debug_logs"); } catch { /* ignore */ }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,8 +69,10 @@ export default function CounterLoginPage() {
       addLog("info", "Mengirim request POST /api/auth/counter-login ...");
       const result = await counterLogin(form.username, form.password, alias);
       addLog("success", `Login berhasil. User: ${JSON.stringify(result)}`);
-      addLog("info", `Redirect ke /${alias}/counter/select ...`);
-      router.push(`/${alias}/counter/select`);
+      addLog("info", `Redirect ke /${alias}/counter/select (window.location.href) ...`);
+      // Use window.location.href instead of router.push to force full page reload
+      // This ensures cookies are properly sent in subsequent requests
+      window.location.href = `/${alias}/counter/select`;
     } catch (err: unknown) {
       const e = err as { message?: string; status?: number; body?: unknown };
       setAttempts((a) => a + 1);
@@ -144,7 +164,7 @@ export default function CounterLoginPage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="font-bold text-yellow-400">🔍 Debug Log</span>
                 <button
-                  onClick={() => setDebugLogs([])}
+                  onClick={clearLogs}
                   className="text-gray-500 hover:text-white text-xs"
                 >
                   [clear]

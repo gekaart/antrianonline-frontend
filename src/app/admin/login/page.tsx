@@ -12,12 +12,25 @@ import { Toaster } from "@/components/ui/toast";
 import { toast } from "@/hooks/use-toast";
 import { Building2, Lock } from "lucide-react";
 
+interface DebugLog {
+  time: string;
+  type: "info" | "success" | "error";
+  msg: string;
+}
+
 export default function AdminLoginPage() {
   const router = useRouter();
   const { fetchUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
+  const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
+
+  function addLog(type: DebugLog["type"], msg: string) {
+    const time = new Date().toISOString().slice(11, 23);
+    setDebugLogs((prev) => [...prev, { time, type, msg }]);
+    console.log(`[DEBUG ${type.toUpperCase()}] ${msg}`);
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -28,14 +41,28 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setDebugLogs([]);
+
+    addLog("info", `Memulai login untuk user: ${form.username}`);
+    addLog("info", `API_BASE: "${process.env.NEXT_PUBLIC_API_URL ?? "(kosong = relative URL)"}"`);
+    addLog("info", `Target URL: ${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/auth/login`);
+
     try {
-      await login(form.username, form.password);
+      addLog("info", "Mengirim request POST /api/auth/login ...");
+      const result = await login(form.username, form.password);
+      addLog("success", `Login berhasil. User: ${JSON.stringify(result)}`);
+
+      addLog("info", "Memanggil fetchUser() untuk verifikasi cookie ...");
       await fetchUser();
+      addLog("success", "fetchUser() selesai. Redirect ke /admin ...");
+
       router.push("/admin");
     } catch (err: unknown) {
-      const error = err as { message?: string };
-      setError(error?.message || "Login gagal");
-      toast({ title: error?.message || "Login gagal", variant: "destructive" });
+      const e = err as { message?: string; status?: number; body?: unknown };
+      const msg = e?.message || "Login gagal";
+      addLog("error", `ERROR: ${msg} | status: ${e?.status ?? "N/A"} | body: ${JSON.stringify(e?.body ?? null)}`);
+      setError(msg);
+      toast({ title: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -105,6 +132,36 @@ export default function AdminLoginPage() {
               </form>
             </CardContent>
           </Card>
+
+          {/* DEBUG PANEL — tampil setelah klik Masuk */}
+          {debugLogs.length > 0 && (
+            <div className="mt-4 rounded-lg border border-gray-300 bg-gray-900 text-xs text-gray-100 p-3 font-mono">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-yellow-400">🔍 Debug Log</span>
+                <button
+                  onClick={() => setDebugLogs([])}
+                  className="text-gray-400 hover:text-white text-xs"
+                >
+                  [clear]
+                </button>
+              </div>
+              {debugLogs.map((log, i) => (
+                <div
+                  key={i}
+                  className={
+                    log.type === "error"
+                      ? "text-red-400"
+                      : log.type === "success"
+                      ? "text-green-400"
+                      : "text-gray-300"
+                  }
+                >
+                  <span className="text-gray-500">[{log.time}]</span>{" "}
+                  {log.msg}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>

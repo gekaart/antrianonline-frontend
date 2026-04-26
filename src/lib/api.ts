@@ -39,7 +39,20 @@ export async function apiFetch<T = unknown>(
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json();
+
+  // Catch JSON parse errors and include HTTP status + raw body for debugging
+  let rawText = "";
+  try {
+    rawText = await res.text();
+    return JSON.parse(rawText) as T;
+  } catch (e) {
+    const parseErr = e as Error;
+    throw new ApiError(
+      `JSON parse error (HTTP ${res.status}): ${parseErr.message} | Raw: "${rawText.slice(0, 300)}"`,
+      res.status,
+      null
+    );
+  }
 }
 
 export class ApiError extends Error {

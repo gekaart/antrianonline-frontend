@@ -265,7 +265,7 @@ export default function AntrianStatusPage() {
                     {[1, 2, 3, 4, 5].map((s) => (
                       <Star
                         key={s}
-                        className={`h-6 w-6 ${s <= (antrian.rating || rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`}
+                        className={`h-6 w-6 ${s <= (antrian.rating?.bintang || rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`}
                       />
                     ))}
                   </div>

@@ -3,11 +3,20 @@
 // In production (e.g. Hostinger Business) set BACKEND_URL=https://staging.antrianonline.net
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
 
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
+  webpack(config) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname, 'src'),
+    };
+    return config;
+  },
   async rewrites() {
     return [
       {

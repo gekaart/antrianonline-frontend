@@ -42,6 +42,8 @@ interface Kantor {
   field_no_hp_aktif: boolean; field_no_hp_wajib: boolean;
   aktif_rating: boolean;
   qr_dinamis: boolean;
+  antrian_manual_aktif: boolean;
+  antrian_manual_timeout: number;
   waktu_reset?: string;
   timezone?: string;
 }
@@ -231,6 +233,39 @@ export default function SettingsPage() {
                   type="checkbox"
                   name="qr_dinamis"
                   checked={!!form.qr_dinamis}
+                  onChange={handleChange}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+            <div className="flex items-start justify-between py-3 border-b last:border-0">
+              <div>
+                <p className="text-sm font-medium">Antrian Manual</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Menampilkan tombol <em>Ambil Antrian Manual</em> di halaman QR display.
+                  Berguna untuk pengunjung yang tidak memiliki smartphone.
+                </p>
+                {form.antrian_manual_aktif && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <label className="text-xs text-gray-500">Auto-tutup (menit):</label>
+                    <input
+                      type="number"
+                      name="antrian_manual_timeout"
+                      value={form.antrian_manual_timeout ?? 3}
+                      onChange={(e) => setForm((f) => ({ ...f, antrian_manual_timeout: parseInt(e.target.value) || 3 }))}
+                      min={1}
+                      max={30}
+                      className="w-20 h-8 text-xs rounded-md border border-gray-300 px-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
+              </div>
+              <label className="relative inline-flex cursor-pointer items-center ml-4 mt-1">
+                <input
+                  type="checkbox"
+                  name="antrian_manual_aktif"
+                  checked={!!form.antrian_manual_aktif}
                   onChange={handleChange}
                   className="sr-only peer"
                 />

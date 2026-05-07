@@ -77,10 +77,10 @@ export default function CounterLoginPage() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Username</Label>
+                  <Label className="text-gray-300">Username atau Email</Label>
                   <Input
                     name="username"
-                    placeholder="username"
+                    placeholder="username atau email"
                     autoComplete="username"
                     value={form.username}
                     onChange={handleChange}

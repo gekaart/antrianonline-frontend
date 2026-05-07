@@ -33,16 +33,33 @@ export default function PetugasPage() {
 
   async function handleSave() {
     setSaving(true);
+    const body = editing ? { nama: form.nama, username: form.username, email: form.email, no_wa: form.no_wa, ...(form.password && { password: form.password }) } : form;
     try {
-      const body = editing ? { nama: form.nama, username: form.username, email: form.email, no_wa: form.no_wa, ...(form.password && { password: form.password }) } : form;
       if (editing) await api.put(`/api/admin/users/${editing.id}`, body);
       else await api.post("/api/admin/users", body);
       toast({ title: "Berhasil disimpan", variant: "success" });
       setOpen(false);
       await load();
     } catch (err: unknown) {
-      const error = err as { message?: string };
-      toast({ title: error?.message || "Gagal", variant: "destructive" });
+      // Extract error info comprehensively
+      const e = err as any;
+      const errorInfo = {
+        type:           e?.constructor?.name || typeof e,
+        message:        e?.message || String(e),
+        status:         e?.status,
+        body:           e?.body,
+        stack:          e?.stack?.split('\n').slice(0, 2).join(' | '),
+        requestBody:    JSON.stringify(body).substring(0, 500),
+      };
+      console.error('[PETUGAS ERROR]', errorInfo);
+      
+      let detailMsg = "Gagal";
+      if (e?.body?.debug) {
+        detailMsg = `Error: ${e.body.debug.message || ''} (${e.body.debug.code || ''})`;
+      } else if (e?.message) {
+        detailMsg = e.message;
+      }
+      toast({ title: detailMsg, variant: "destructive" });
     } finally { setSaving(false); }
   }
 
@@ -54,6 +71,19 @@ export default function PetugasPage() {
   }
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+
+  // Debug: test API langsung
+  async function testApi() {
+    try {
+      const res = await fetch("/api/admin/kantor", { credentials: "include" });
+      const text = await res.text();
+      console.log("[DEBUG] GET /api/admin/kantor:", res.status, text.substring(0, 300));
+      toast({ title: `API test: ${res.status} - ${text.substring(0, 100)}`, variant: res.ok ? "success" : "destructive" });
+    } catch (e: any) {
+      console.error("[DEBUG] API test error:", e);
+      toast({ title: `API error: ${e.message}`, variant: "destructive" });
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -75,6 +105,9 @@ export default function PetugasPage() {
           <Button onClick={openCreate} className="gap-2" aria-label="Tambah Petugas">
             <Plus className="h-4 w-4" />
             <span className="hidden md:inline">Tambah Petugas</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={testApi} className="gap-1 text-xs text-gray-400" aria-label="Debug API">
+            🐛 Debug
           </Button>
         </div>
       </div>

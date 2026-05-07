@@ -233,48 +233,70 @@ export default function MonitorPage() {
         return;
       }
       addLog("playDing() dipanggil");
+      // Preload audio untuk menghindari NotSupportedError
       const audioUrl = "/sounds/freesound_community-ding-47489.mp3";
-      try {
-        const audio = new Audio(audioUrl);
-        audio.volume = 0.85;
-        const onEnded = () => {
-          addLog(`✅ Suara ding selesai (mp3): ${audioUrl}`);
-          audio.removeEventListener("ended", onEnded);
-          resolve();
-        };
-        audio.addEventListener("ended", onEnded);
+      const audio = new Audio();
+      audio.volume = 0.85;
+      
+      const onCanPlay = () => {
+        addLog(`✅ Audio siap dimainkan: ${audioUrl}`);
         audio.play()
           .then(() => addLog(`✅ Suara ding mulai diputar (mp3): ${audioUrl}`))
           .catch((err) => {
-            addLog(`⚠️ Gagal play() MP3: ${err} — mencoba fallback oscillator`);
-            audio.removeEventListener("ended", onEnded);
-            // Fallback oscillator
-            try {
-              const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-              if (!AudioCtx) { addLog("AudioContext TIDAK didukung"); resolve(); return; }
-              const ctx = new AudioCtx();
-              addLog(`Status AudioContext (fallback): ${ctx.state}`);
-              const oscillator = ctx.createOscillator();
-              const gain = ctx.createGain();
-              oscillator.connect(gain);
-              gain.connect(ctx.destination);
-              oscillator.type = "sine";
-              oscillator.frequency.setValueAtTime(880, ctx.currentTime);
-              gain.gain.setValueAtTime(0.4, ctx.currentTime);
-              gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-              oscillator.start(ctx.currentTime);
-              oscillator.stop(ctx.currentTime + 0.6);
-              oscillator.onended = () => { ctx.close(); addLog("✅ Suara ding berhasil diputar (fallback)"); resolve(); };
-            } catch (e) {
-              addLog(`❌ Fallback oscillator gagal: ${e}`);
-              resolve();
-            }
+            addLog(`⚠️ Gagal play() MP3: ${err} — fallback ke WAV`);
+            // Fallback ke WAV
+            const audio2 = new Audio("/sounds/ding.wav");
+            audio2.volume = 0.85;
+            audio2.addEventListener("ended", () => { addLog("✅ Suara ding selesai (wav)"); resolve(); });
+            audio2.addEventListener("error", () => {
+              addLog("❌ WAV juga gagal — fallback oscillator");
+              playFallbackOscillator(resolve);
+            });
+            audio2.play().catch(() => playFallbackOscillator(resolve));
           });
-      } catch (err) {
-        addLog(`❌ Gagal memutar ding via Audio(): ${err}`);
-        resolve();
-      }
+      };
+      
+      const onError = () => {
+        addLog(`⚠️ Audio MP3 gagal dimuat — fallback ke WAV`);
+        const audio2 = new Audio("/sounds/ding.wav");
+        audio2.volume = 0.85;
+        audio2.addEventListener("ended", () => { addLog("✅ Suara ding selesai (wav)"); resolve(); });
+        audio2.addEventListener("error", () => {
+          addLog("❌ WAV juga gagal — fallback oscillator");
+          playFallbackOscillator(resolve);
+        });
+        audio2.play().catch(() => playFallbackOscillator(resolve));
+      };
+      
+      audio.addEventListener("canplaythrough", onCanPlay, { once: true });
+      audio.addEventListener("error", onError, { once: true });
+      audio.preload = "auto";
+      audio.src = audioUrl;
+      audio.load();
     });
+  }
+
+  function playFallbackOscillator(resolve: () => void) {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) { addLog("AudioContext TIDAK didukung"); resolve(); return; }
+      const ctx = new AudioCtx();
+      addLog(`Status AudioContext (fallback): ${ctx.state}`);
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.6);
+      oscillator.onended = () => { ctx.close(); addLog("✅ Suara ding berhasil (oscillator fallback)"); resolve(); };
+    } catch (e) {
+      addLog(`❌ Fallback oscillator gagal: ${e}`);
+      resolve();
+    }
   }
 
   function angkaKeKata(n: number): string {
@@ -388,6 +410,20 @@ export default function MonitorPage() {
     resetNotifTimerRef.current = setTimeout(() => setResetNotif(null), 60000);
     fetchData();
   });
+
+  // Preload audio file agar siap saat dipanggil
+  useEffect(() => {
+    const preloadAudio = new Audio();
+    preloadAudio.preload = "auto";
+    preloadAudio.src = "/sounds/freesound_community-ding-47489.mp3";
+    preloadAudio.load();
+    addLog("🎵 Audio MP3 di-preload");
+    // Juga preload WAV sebagai cadangan
+    const preloadWav = new Audio();
+    preloadWav.preload = "auto";
+    preloadWav.src = "/sounds/ding.wav";
+    preloadWav.load();
+  }, []);
 
   if (loading) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">

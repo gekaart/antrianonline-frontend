@@ -46,7 +46,9 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon")
+    pathname.startsWith("/favicon") ||
+    pathname.startsWith("/sounds") ||
+    pathname.startsWith("/uploads")
   ) {
     return NextResponse.next();
   }
